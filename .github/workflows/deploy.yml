@@ -2,35 +2,40 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main  # Voer uit bij wijzigingen in de 'main'-branch
+    branches: [ main ]
+  workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Build project
-        run: |
-          # Voeg hier build-commando's toe (indien nodig)
-          # Voorbeeld: npm install && npm run build
-          echo "Bouwen overslaan: geen specifieke build opgegeven."
-
-      - name: Deploy to GitHub Pages
-        uses: actions/configure-pages@v3
-      
-      - name: Upload to GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          path: ./  # Pad naar bestanden die je wilt publiceren
-        
-      - name: Publish GitHub Pages
-        uses: actions/deploy-pages@v3
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci
+
+      - name: Build & Export (set basePath to repo name)
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ github.event.repository.name }}
+        run: |
+          npm run build
+          npm run export
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./out
+          publish_branch: gh-pages
